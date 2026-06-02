@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 2.0.1)'
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ github.event.inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Invalid version format. Expected x.y.z"
+            exit 1
+          fi
+
+      - name: Check if first release
+        id: first
+        run: |
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          [ -z "$PREV" ] && echo "value=true" >> $GITHUB_OUTPUT || echo "value=false" >> $GITHUB_OUTPUT
+
+      - name: Bump VERSION
+        run: |
+          sed -i 's/^VERSION=".*"/VERSION="${{ github.event.inputs.version }}"/' lib/ntp_common.sh
+
+      - name: Build bundle
+        run: bash build.sh
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib/ntp_common.sh
+          git commit -m "chore: release v${{ github.event.inputs.version }}"
+          git tag "v${{ github.event.inputs.version }}"
+          git push origin HEAD --tags
+
+      - name: Create GitHub Release (first)
+        if: steps.first.outputs.value == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "v${{ github.event.inputs.version }}"
+          body: "Initial release"
+          files: dist/ntp-tools
+
+      - name: Create GitHub Release
+        if: steps.first.outputs.value == 'false'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "v${{ github.event.inputs.version }}"
+          generate_release_notes: true
+          files: dist/ntp-tools

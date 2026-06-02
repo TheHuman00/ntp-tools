@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# Locate lib: patched to an absolute path at install time,
+# falls back to relative path when running from the source tree.
+NTP_TOOLS_LIB="__LIBDIR__"
+if [[ "$NTP_TOOLS_LIB" == "__LIBDIR__" ]] || [[ ! -d "$NTP_TOOLS_LIB" ]]; then
+  NTP_TOOLS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+fi
+
+source "$NTP_TOOLS_LIB/ntp_common.sh" 2>/dev/null || {
+  echo "Error: cannot load ntp_common.sh (looked in: $NTP_TOOLS_LIB)" >&2
+  exit 1
+}
+
+show_help() {
+  cat <<EOF
+Usage: ntp-tools <command> [options]
+
+Commands:
+  time     Get current time from NTP servers
+  check    Check NTP server health (use --detail for full analysis)
+  monitor  Monitor system NTP synchronization
+  diff     Compare time between two servers
+
+Options:
+  -h, --help    Show this help
+  --version     Show version
+
+Run 'ntp-tools <command> --help' for command-specific help.
+EOF
+}
+
+[[ $# -eq 0 ]] && { show_help; exit 0; }
+
+cmd="$1"
+shift
+
+case "$cmd" in
+  time|check|monitor|diff)
+    source "$NTP_TOOLS_LIB/commands/$cmd.sh" || exit 1
+    main "$@"
+    ;;
+  --version|-V)
+    echo "ntp-tools v$VERSION"
+    ;;
+  --help|-h)
+    show_help
+    ;;
+  *)
+    echo "ntp-tools: unknown command '$cmd'" >&2
+    echo "Run 'ntp-tools --help' for usage." >&2
+    exit 1
+    ;;
+esac
