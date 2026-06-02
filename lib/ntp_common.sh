@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="0.0.0"
+VERSION="1.0.0"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
