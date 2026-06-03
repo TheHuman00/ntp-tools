@@ -2,7 +2,9 @@
 
 A NTP toolkit for Linux. 
 
-**Query servers**, **check health**, **monitor sync**, **compare offsets** and **audit NTS**. 
+**Query servers**, **check health**, **monitor sync**, **compare offsets** and **audit NTS**.
+
+NTS audit verifies port 4460, TLS handshake, certificate hostname match and expiration.
 
 Requires `python3` and `bash`. No other dependencies.
 
@@ -32,8 +34,17 @@ Get current time from one or more NTP servers. Default: `pool.ntp.org`.
 
 
 ```bash
-ntp-tools time 0.pool.ntp.org -f iso
+ntp-tools time -f iso time.google.com
 ```
+
+<details>
+<summary>Example output</summary>
+
+```
+2026-06-04T01:25:27+02:00
+```
+
+</details>
 
 | Option | Values | Description |
 |--------|--------|-------------|
@@ -43,18 +54,54 @@ ntp-tools time 0.pool.ntp.org -f iso
 
 ### `ntp-tools check [SERVER...]`
 
-Check NTP server health. Default: `pool.ntp.org`. Output per server: DNS resolution, port 123/UDP, NTP response with offset, RTT and stratum, overall verdict HEALTHY / DEGRADED / UNHEALTHY.
+Check NTP server health. Default: `pool.ntp.org`.
 
-`openssl` required for `--nts`.
+Output per server: DNS resolution, port 123/UDP, NTP response with offset / RTT / stratum / precision / root delay / reference ID, overall verdict HEALTHY / DEGRADED / UNHEALTHY.
 
 ```bash
-ntp-tools check --detail time.google.com
+ntp-tools check -n time.cloudflare.com
 ```
+
+<details>
+<summary>Example output</summary>
+
+```
+=== NTP Server Check ===
+Servers: 1  |  Timeout: 10s
+
+Checking: time.cloudflare.com
+  DNS:      ✓ 2606:4700:f1::1
+  Port 123: ✓
+  NTP:      ✓  offset: -0.001488090s  RTT: 0.021376848s  stratum: 3
+    Version:          3
+    Poll interval:    1s
+    Precision:        0.000000015s
+    Root delay:       0.011261s
+    Root dispersion:  0.000519s
+    Reference ID:     10.16.8.4
+    Reference time:   2026-06-03 23:22:51 UTC
+    Leap indicator:   none
+  NTS:
+    ✓ KE_PORT_OK
+    ✓ TLS_OK
+    ✓ Certificate valid for 258d
+    ✓ LOCAL_DAEMON_CAPABLE
+  Overall:  HEALTHY
+```
+
+</details>
 
 | Option | Values | Description |
 |--------|--------|-------------|
 | `-f, --file` | `FILE` | Read server list from file |
-| `-n, --nts` | | Check NTS support: TLS handshake, certificate validity and expiration, local daemon capability |
+| `-n, --nts` | | Audit NTS support (requires `openssl`) |
+
+**NTS audit** (`-n`) verifies:
+- Port 4460 reachable
+- TLS handshake valid
+- Certificate matches the server hostname (detects mismatches)
+- Certificate expiration (warns if < 30 days)
+- Local NTP daemon NTS capability
 
 ---
 
@@ -65,6 +112,36 @@ Monitor the local NTP daemon. Auto detects `chronyd`, `ntpd`, `systemd-timesyncd
 ```bash
 ntp-tools monitor --watch --interval 10
 ```
+
+<details>
+<summary>Example output</summary>
+
+```
+=== Cycle #1 — 2026-06-04 01:22:06 ===
+
+=== NTP Daemon ===
+  chrony (chronyd): Running
+
+=== Synchronization Status ===
+Reference ID    : 5E8EF6C0 (meron.soleus.nu)
+Stratum         : 4
+System time     : 0.000827766 seconds fast of NTP time
+Last offset     : +0.000907674 seconds
+RMS offset      : 0.001846254 seconds
+
+=== Time Sources ===
+MS Name/IP address         Stratum Poll Reach LastRx Last sample
+===============================================================================
+^* meron.soleus.nu               3  10   377   229  +2361us[+3269us] +/-   11ms
+
+=== System Clock ===
+  Local:    2026-06-04 01:22:06 CEST
+  UTC:      2026-06-03 23:22:06 UTC
+
+Next cycle in 10s...
+```
+
+</details>
 
 | Option | Values | Description |
 |--------|--------|-------------|
@@ -79,8 +156,43 @@ ntp-tools monitor --watch --interval 10
 Compare time offset between two servers. If SERVER2 is omitted, local system clock is used as reference. Shows a qualitative rating: Excellent / Good / Acceptable / Poor / Very poor. With multiple samples: average, min, max, standard deviation.
 
 ```bash
-ntp-tools diff pool.ntp.org time.google.com -n 5
+ntp-tools diff pool.ntp.org time.cloudflare.com -n 3
 ```
+
+<details>
+<summary>Example output</summary>
+
+```
+=== NTP Time Diff ===
+  Server 1: pool.ntp.org
+  Server 2: time.cloudflare.com
+  Samples:  3
+
+Sample 1/3...
+  Diff: 126.496 ms
+Sample 2/3...
+  Diff: 54.379 ms
+Sample 3/3...
+  Diff: 53.936 ms
+
+Server comparison:
+                       pool.ntp.org                 time.cloudflare.com
+  Stratum:             2                            3
+  RTT:                 31.525 ms                    49.899 ms
+  Precision:           60 ns                        15 ns
+  Root delay:          3.418 ms                     11.566 ms
+  Root dispersion:     5.890 ms                     702.000 µs
+  Reference ID:        85.199.214.102               10.16.8.4
+
+Avg offset:  78.270 ms  (mean of 3 samples)
+Jitter:      34.101 ms  (std deviation)
+
+Interpretation:
+  Acceptable (< 100ms)
+  time.cloudflare.com is ahead of pool.ntp.org
+```
+
+</details>
 
 | Option | Values | Description |
 |--------|--------|-------------|
