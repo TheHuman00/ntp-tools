@@ -12,6 +12,16 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 error() { echo -e "${RED}Error: $1${NC}" >&2; }
 
+format_unit() {
+  local val="${1:-0}"
+  local abs="${val#-}"
+  if   awk "BEGIN{exit !($abs < 0.000001)}"; then awk "BEGIN{printf \"%.0f ns\", $val * 1000000000}"
+  elif awk "BEGIN{exit !($abs < 0.001)}";    then awk "BEGIN{printf \"%.3f µs\", $val * 1000000}"
+  elif awk "BEGIN{exit !($abs < 1)}";        then awk "BEGIN{printf \"%.3f ms\", $val * 1000}"
+  else                                            awk "BEGIN{printf \"%.6f s\",  $val}"
+  fi
+}
+
 resolve_host() {
   local host="$1"
   if command_exists getent; then

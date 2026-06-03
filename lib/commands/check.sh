@@ -33,7 +33,7 @@ _check_ntp_data() {
 _check_nts() {
   local server="$1" port="${2:-4460}"
 
-  if (echo >/dev/tcp/"$server"/"$port") 2>/dev/null; then
+  if timeout 5 bash -c "echo >/dev/tcp/$server/$port" 2>/dev/null; then
     echo "NTS:KE_PORT_OK"
   else
     echo "NTS:KE_PORT_FAIL"
@@ -220,7 +220,7 @@ main() {
   local total=${#SERVERS[@]} healthy=0 degraded=0 unhealthy=0
 
   echo -e "${BLUE}=== NTP Server Check ===${NC}"
-  echo "Servers: $total  |  Timeout: ${TIMEOUT}s"
+  echo "Servers: $total"
   echo
 
   for server in "${SERVERS[@]}"; do
