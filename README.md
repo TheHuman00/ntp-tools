@@ -1,12 +1,16 @@
 # ntp-tools
 
-A NTP toolkit for Linux.
+Complete NTP CLI : health check, sync monitoring, NTS audit & Roughtime verification.
 
-**Query servers**, **check health**, **monitor sync**, **compare offsets**, **audit NTS** and **verify Roughtime**.
-
-Requires `python3` and `bash`. No other dependencies.
+- **Check** : DNS, port, offset, RTT, stratum and full server details
+- **Monitor** : live view of your local NTP daemon and sync status
+- **Diff** : compare offset between two servers or against the local clock
+- **Nts** : verifies TLS on port 4460, certificate validity and local daemon compatibility
+- **Roughtime** : UDP time query with Ed25519 signature verification, public key auto-fetched from DNS TXT
 
 ## Prerequisites
+
+Requires `python3` and `bash`. No other dependencies.
 
 Optional: `openssl` (for NTS and Roughtime signature verification), `dig` (for Roughtime DNS key lookup)
 
@@ -62,7 +66,7 @@ ntp-tools check -r -n roughtime.cloudflare.com       # + Roughtime + NTS
 ```
 
 <details>
-<summary>Example output — NTS</summary>
+<summary>Example output - NTS</summary>
 
 ```
 === NTP Server Check ===
@@ -91,7 +95,7 @@ Checking: time.cloudflare.com
 </details>
 
 <details>
-<summary>Example output — Roughtime + NTS</summary>
+<summary>Example output - Roughtime + NTS</summary>
 
 ```
 === NTP Server Check ===
@@ -130,15 +134,15 @@ Checking: roughtime.cloudflare.com
 |--------|-------------|
 | `-f, --file FILE` | Read server list from file |
 | `-n, --nts` | Audit NTS support (requires `openssl`) |
-| `-r, --roughtime` | Check Roughtime support |
+| `-r, --roughtime` | Audit Roughtime support |
 | `--roughtime-port PORT` | Roughtime UDP port (default: `2002`) |
-| `--roughtime-key KEY` | Public key in base64 for signature verification |
+| `--roughtime-key KEY` | Public key in base64 (optional - fetched from DNS TXT by default) |
 
 #### Roughtime signature verification
 
 The `--roughtime` flag queries the server over UDP and verifies the cryptographic signature of the response (Ed25519).
 
-**Public key resolution** — by default, the key is fetched automatically from the server's DNS TXT record:
+**Public key resolution** : by default, the key is fetched automatically from the server's DNS TXT record:
 
 ```bash
 # Key fetched automatically from DNS TXT record
@@ -149,12 +153,7 @@ ntp-tools check --roughtime roughtime.cloudflare.com --roughtime-port 2003 \
   --roughtime-key "0GD7c3yP8xEc4Zl2zeuN2SlLvDVVocjsPSL8/Rl/7zg="
 ```
 
-**Auth output:**
-- `✓ chain · ✓ response` — the delegation certificate and the time response are both cryptographically valid
-- `✓ chain · — response` — the root key is trusted but the response context is unknown (server uses a non-standard implementation)
-- `no public key` — no DNS TXT record found and no `--roughtime-key` provided; time is still shown but not verified
-
-**NTS audit** (`-n`) verifies:
+#### NTS audit (`-n`) verifies:
 - Port 4460 reachable
 - TLS handshake valid
 - Certificate matches the server hostname
