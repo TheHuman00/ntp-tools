@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+
+override_dh_auto_install:
+	install -D -m 0755 bin/ntp-tools \
+		debian/ntp-tools/usr/bin/ntp-tools
+	sed -i 's|__LIBDIR__|/usr/lib/ntp-tools|g' \
+		debian/ntp-tools/usr/bin/ntp-tools
+	install -D -m 0644 lib/ntp_common.sh \
+		debian/ntp-tools/usr/lib/ntp-tools/ntp_common.sh
+	install -d debian/ntp-tools/usr/lib/ntp-tools/commands
+	install -m 0644 lib/commands/*.sh \
+		debian/ntp-tools/usr/lib/ntp-tools/commands/
