@@ -26,11 +26,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check if first release
-        id: first
-        run: |
-          PREV=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          [ -z "$PREV" ] && echo "value=true" >> $GITHUB_OUTPUT || echo "value=false" >> $GITHUB_OUTPUT
 
       - name: Install build dependencies
         run: sudo apt-get install -y debhelper dput-ng devscripts
@@ -51,6 +46,34 @@ jobs:
           printf 'ntp-tools (%s-1) noble; urgency=medium\n\n%s\n\n -- TheHuman00 <thehuman00@inutile.pro>  %s\n\n' \
             "$VERSION" "$CHANGES" "$DATE" | cat - debian/changelog > /tmp/cl.tmp
           mv /tmp/cl.tmp debian/changelog
+      - name: Update CHANGELOG
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          VERSION="${{ github.event.inputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -v "^- chore: release")
+          else
+            COMMITS="- Initial release"
+          fi
+          [ -z "$COMMITS" ] && COMMITS="- Minor changes and improvements"
+
+          NEW_ENTRY="## v${VERSION} - ${DATE}\n\n${COMMITS}\n"
+
+          if [ -f CHANGELOG.md ]; then
+            FIRST=$(grep -n "^## " CHANGELOG.md | head -1 | cut -d: -f1)
+            if [ -n "$FIRST" ]; then
+              head -n $((FIRST - 1)) CHANGELOG.md > /tmp/cl.md
+              printf "${NEW_ENTRY}\n" >> /tmp/cl.md
+              tail -n +${FIRST} CHANGELOG.md >> /tmp/cl.md
+              mv /tmp/cl.md CHANGELOG.md
+            else
+              printf "${NEW_ENTRY}\n" >> CHANGELOG.md
+            fi
+          else
+            printf "# Changelog\n\n${NEW_ENTRY}\n" > CHANGELOG.md
+          fi
 
       - name: Build bundle
         run: bash build.sh
@@ -81,22 +104,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add lib/ntp_common.sh debian/changelog
+          git add lib/ntp_common.sh debian/changelog CHANGELOG.md
           git commit -m "chore: release v${{ github.event.inputs.version }}"
           git tag "v${{ github.event.inputs.version }}"
           git push origin HEAD --tags
 
-      - name: Create GitHub Release (first)
-        if: steps.first.outputs.value == 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: "v${{ github.event.inputs.version }}"
-          name: "v${{ github.event.inputs.version }}"
-          body: "Initial release"
-          files: dist/ntp-tools
-
       - name: Create GitHub Release
-        if: steps.first.outputs.value == 'false'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: "v${{ github.event.inputs.version }}"
