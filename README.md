@@ -19,14 +19,7 @@ Optional: `openssl` (for NTS and Roughtime signature verification), `dig` (for R
 
 **Ubuntu / Debian (apt)**
 ```bash
-sudo gpg --no-default-keyring \
-  --keyring /usr/share/keyrings/thehuman00-ntp-tools.gpg \
-  --keyserver keyserver.ubuntu.com \
-  --recv-keys 8CFDF6736F9013F1
-
-echo "deb [signed-by=/usr/share/keyrings/thehuman00-ntp-tools.gpg] https://ppa.launchpadcontent.net/thehuman00/ntp-tools/ubuntu noble main" \
-  | sudo tee /etc/apt/sources.list.d/thehuman00-ntp-tools.list
-
+sudo add-apt-repository ppa:thehuman00/ntp-tools
 sudo apt update && sudo apt install ntp-tools
 ```
 
