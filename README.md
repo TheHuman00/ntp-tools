@@ -1,16 +1,18 @@
 # ntp-tools
 
-A NTP toolkit for Linux. 
+Complete NTP CLI : health check, sync monitoring, NTS audit & Roughtime verification.
 
-**Query servers**, **check health**, **monitor sync**, **compare offsets** and **audit NTS**.
-
-NTS audit verifies port 4460, TLS handshake, certificate hostname match and expiration.
-
-Requires `python3` and `bash`. No other dependencies.
+- **Check** : DNS, port, offset, RTT, stratum and full server details
+- **Monitor** : live view of your local NTP daemon and sync status
+- **Diff** : compare offset between two servers or against the local clock
+- **Nts** : verifies TLS on port 4460, certificate validity and local daemon compatibility
+- **Roughtime** : UDP time query with Ed25519 signature verification, public key auto-fetched from DNS TXT
 
 ## Prerequisites
 
-Optional: `openssl` (for NTS check)
+Requires `python3` and `bash`. No other dependencies.
+
+Optional: `openssl` (for NTS and Roughtime signature verification), `dig` (for Roughtime DNS key lookup)
 
 ## Install
 
@@ -31,7 +33,6 @@ sudo chmod +x /usr/local/bin/ntp-tools
 ### `ntp-tools time [SERVER...]`
 
 Get current time from one or more NTP servers. Default: `pool.ntp.org`.
-
 
 ```bash
 ntp-tools time -f iso time.google.com
@@ -59,15 +60,17 @@ Check NTP server health. Default: `pool.ntp.org`.
 Output per server: DNS resolution, port 123/UDP, NTP response with offset / RTT / stratum / precision / root delay / reference ID, overall verdict HEALTHY / DEGRADED / UNHEALTHY.
 
 ```bash
-ntp-tools check -n time.cloudflare.com
+ntp-tools check time.cloudflare.com
+ntp-tools check -n time.cloudflare.com           # + NTS audit
+ntp-tools check -r -n roughtime.cloudflare.com       # + Roughtime + NTS
 ```
 
 <details>
-<summary>Example output</summary>
+<summary>Example output - NTS</summary>
 
 ```
 === NTP Server Check ===
-Servers: 1  |  Timeout: 10s
+Servers: 1
 
 Checking: time.cloudflare.com
   DNS:      ✓ 2606:4700:f1::1
@@ -91,23 +94,77 @@ Checking: time.cloudflare.com
 
 </details>
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| `-f, --file` | `FILE` | Read server list from file |
-| `-n, --nts` | | Audit NTS support (requires `openssl`) |
+<details>
+<summary>Example output - Roughtime + NTS</summary>
 
-**NTS audit** (`-n`) verifies:
+```
+=== NTP Server Check ===
+Servers: 1
+
+Checking: roughtime.cloudflare.com
+  DNS:      ✓ 2606:4700:f1::1
+  Port 123: ✓
+  NTP:      ✓  offset: 0.002061248s  RTT: 0.016512632s  stratum: 3
+    Version:          3
+    Poll interval:    1s
+    Precision:        0.000000015s
+    Root delay:       0.011261s
+    Root dispersion:  0.000519s
+    Reference ID:     10.16.8.4
+    Reference time:   2026-06-06 01:05:18 UTC
+    Leap indicator:   none
+  Roughtime: ✓
+    Time:      2026-06-06 01:05:20 UTC
+    Radius:    ±0.000s
+    RTT:       19.820 ms
+    Auth:      Ed25519  ✓ chain  ·  ✓ response
+    Delegate:  2026-06-05T23:10:03Z → 2026-06-06T23:10:03Z
+    Δ vs NTP:  -0.002s
+  NTS:
+    ✓ KE_PORT_OK
+    ✓ TLS_OK
+    ✓ Certificate valid for 258d
+    ✓ LOCAL_DAEMON_CAPABLE
+  Overall:  HEALTHY
+```
+
+</details>
+
+| Option | Description |
+|--------|-------------|
+| `-f, --file FILE` | Read server list from file |
+| `-n, --nts` | Audit NTS support (requires `openssl`) |
+| `-r, --roughtime` | Audit Roughtime support |
+| `--roughtime-port PORT` | Roughtime UDP port (default: `2002`) |
+| `--roughtime-key KEY` | Public key in base64 (optional - fetched from DNS TXT by default) |
+
+#### Roughtime signature verification
+
+The `--roughtime` flag queries the server over UDP and verifies the cryptographic signature of the response (Ed25519).
+
+**Public key resolution** : by default, the key is fetched automatically from the server's DNS TXT record:
+
+```bash
+# Key fetched automatically from DNS TXT record
+ntp-tools check --roughtime roughtime.cloudflare.com --roughtime-port 2003
+
+# Key provided explicitly
+ntp-tools check --roughtime roughtime.cloudflare.com --roughtime-port 2003 \
+  --roughtime-key "0GD7c3yP8xEc4Zl2zeuN2SlLvDVVocjsPSL8/Rl/7zg="
+```
+
+#### NTS audit (`-n`) verifies:
 - Port 4460 reachable
 - TLS handshake valid
-- Certificate matches the server hostname (detects mismatches)
-- Certificate expiration (warns if < 30 days)
+- Certificate matches the server hostname
+- Certificate expiration (warns if < 10 days)
 - Local NTP daemon NTS capability
 
 ---
 
 ### `ntp-tools monitor`
 
-Monitor the local NTP daemon. Auto detects `chronyd`, `ntpd`, `systemd-timesyncd` and `openntpd`.
+Monitor the local NTP daemon. Auto-detects `chronyd`, `ntpd`, `systemd-timesyncd` and `openntpd`.
 
 ```bash
 ntp-tools monitor --watch --interval 10
@@ -143,17 +200,17 @@ Next cycle in 10s...
 
 </details>
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| `-w, --watch` | | Run continuously until Ctrl+C |
-| `-i, --interval` | `N` | Seconds between cycles (default: 5) |
-| `-n, --count` | `N` | Number of cycles to run |
+| Option | Description |
+|--------|-------------|
+| `-w, --watch` | Run continuously until Ctrl+C |
+| `-i, --interval N` | Seconds between cycles (default: 5) |
+| `-n, --count N` | Number of cycles to run |
 
 ---
 
 ### `ntp-tools diff SERVER1 [SERVER2]`
 
-Compare time offset between two servers. If SERVER2 is omitted, local system clock is used as reference. Shows a qualitative rating: Excellent / Good / Acceptable / Poor / Very poor. With multiple samples: average, min, max, standard deviation.
+Compare time offset between two servers. If SERVER2 is omitted, the local system clock is used as reference. Shows a qualitative rating: Excellent / Good / Acceptable / Poor / Very poor. With multiple samples: average, min, max, standard deviation.
 
 ```bash
 ntp-tools diff pool.ntp.org time.cloudflare.com -n 3
@@ -194,9 +251,9 @@ Interpretation:
 
 </details>
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| `-n, --samples` | `N` | Number of samples (default: 3) |
+| Option | Description |
+|--------|-------------|
+| `-n, --samples N` | Number of samples (default: 3) |
 
 ---
 

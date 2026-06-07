@@ -12,13 +12,18 @@ Arguments:
 
 Options:
   -f, --file FILE      Read server list from file
-  -n, --nts            Check Network Time Security (NTS) support
+  -n, --nts            Check NTS support (requires openssl)
+  -r, --roughtime      Check Roughtime support (default port: 2002)
+      --roughtime-port PORT  Roughtime UDP port (default: 2002)
+      --roughtime-key  KEY   Public key (base64); default: DNS TXT lookup
   -h, --help           Show this help
 
 Examples:
   ntp-tools check
   ntp-tools check time.google.com
   ntp-tools check --nts time.cloudflare.com
+  ntp-tools check --roughtime roughtime.cloudflare.com
+  ntp-tools check --roughtime --roughtime-port 2003 roughtime.cloudflare.com
   ntp-tools check --file servers.txt
 EOF
 }
@@ -58,7 +63,7 @@ _check_nts() {
         if [[ -n "$expiry_epoch" ]]; then
           days_left=$(( (expiry_epoch - $(date +%s)) / 86400 ))
           if   [[ "$days_left" -lt 0 ]];  then echo "NTS:CERT_EXPIRED"
-          elif [[ "$days_left" -lt 30 ]]; then echo "NTS:CERT_WARN_${days_left}d"
+          elif [[ "$days_left" -lt 10 ]]; then echo "NTS:CERT_WARN_${days_left}d"
           else                                 echo "NTS:CERT_OK_${days_left}d"
           fi
         fi
@@ -115,6 +120,7 @@ _check_nts() {
 _check_server() {
   local server="$1"
   local ok="${GREEN}✓${NC}" fail="${RED}✗${NC}"
+  local explicit_rt_key="${ROUGHTIME_KEY:-}"
 
   echo -e "${BLUE}Checking: $server${NC}"
 
@@ -162,6 +168,61 @@ _check_server() {
     echo -e "  NTP:      $fail"
   fi
 
+  if [[ "$CHECK_ROUGHTIME" == "true" ]]; then
+    local rt_result rt_midp rt_radi rt_rtt rt_sig rt_ts rt_chain rt_mint rt_maxt
+    local rt_pubkey
+    if [[ -n "$explicit_rt_key" ]]; then
+      rt_pubkey="$explicit_rt_key"
+    else
+      rt_pubkey=$(_roughtime_dns_key "$server")
+    fi
+    rt_result=$(_roughtime_query "$server" "$ROUGHTIME_PORT" "$rt_pubkey")
+    if [[ $? -eq 0 ]] && [[ -n "$rt_result" ]]; then
+      rt_midp=$(  echo "$rt_result" | cut -d'|' -f1)
+      rt_radi=$(  echo "$rt_result" | cut -d'|' -f2)
+      rt_rtt=$(   echo "$rt_result" | cut -d'|' -f3)
+      rt_sig=$(   echo "$rt_result" | cut -d'|' -f4)
+      rt_ts=$(    echo "$rt_result" | cut -d'|' -f5)
+      rt_chain=$( echo "$rt_result" | cut -d'|' -f6)
+      rt_mint=$(  echo "$rt_result" | cut -d'|' -f7)
+      rt_maxt=$(  echo "$rt_result" | cut -d'|' -f8)
+      echo -e "  Roughtime: $ok"
+      echo    "    Time:      $rt_ts"
+      echo    "    Radius:    ±${rt_radi}s"
+      echo    "    RTT:       $(format_unit "$rt_rtt")"
+      if [[ -z "$rt_pubkey" ]]; then
+        echo    "    Auth:      no public key"
+        echo    "    Delegate:  —"
+      else
+        local chain_icon resp_icon
+        case "$rt_chain" in
+          OK)   chain_icon="${GREEN}✓${NC} chain" ;;
+          FAIL) chain_icon="${RED}✗${NC} chain" ;;
+          *)    chain_icon="${NC}— chain" ;;
+        esac
+        case "$rt_sig" in
+          VERIFIED) resp_icon="${GREEN}✓${NC} response" ;;
+          FAIL)     resp_icon="${RED}✗${NC} response" ;;
+          *)        resp_icon="${NC}— response" ;;
+        esac
+        echo -e "    Auth:      Ed25519  ${chain_icon}  ·  ${resp_icon}"
+        if [[ -n "$rt_mint" ]] && [[ -n "$rt_maxt" ]]; then
+          echo    "    Delegate:  $rt_mint → $rt_maxt"
+        else
+          echo    "    Delegate:  —"
+        fi
+      fi
+      if [[ -n "$ntp_offset" ]] && [[ "$ntp_offset" != "?" ]]; then
+        local rt_ntp_diff
+        rt_ntp_diff=$(awk "BEGIN{printf \"%.3f\", ($rt_midp - (systime())) - $ntp_offset}" 2>/dev/null || echo "?")
+        echo    "    Δ vs NTP:  ${rt_ntp_diff}s"
+      fi
+    else
+      local rt_err="${rt_result#FAIL:}"
+      echo -e "  Roughtime: $fail ${rt_err:-port ${ROUGHTIME_PORT} not responding}"
+    fi
+  fi
+
   if [[ "$CHECK_NTS" == "true" ]]; then
     echo "  NTS:"
     while IFS= read -r line; do
@@ -195,8 +256,10 @@ _check_server() {
 
 
 main() {
-  local SERVERS=() CHECK_NTS=false
+  local SERVERS=() CHECK_NTS=false CHECK_ROUGHTIME=false
   local TIMEOUT=10
+  ROUGHTIME_PORT=2002
+  ROUGHTIME_KEY=""
 
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -207,7 +270,14 @@ main() {
           [[ -n "$line" ]] && [[ ! "$line" =~ ^# ]] && SERVERS+=("$line")
         done < "$2"
         shift 2 ;;
-      -n|--nts)     CHECK_NTS=true; shift ;;
+      -n|--nts)        CHECK_NTS=true; shift ;;
+      -r|--roughtime)  CHECK_ROUGHTIME=true; shift ;;
+      --roughtime-port)
+        [[ -z "${2:-}" ]] && { error "Missing argument for --roughtime-port"; return 1; }
+        ROUGHTIME_PORT="$2"; shift 2 ;;
+      --roughtime-key)
+        [[ -z "${2:-}" ]] && { error "Missing argument for --roughtime-key"; return 1; }
+        ROUGHTIME_KEY="$2"; shift 2 ;;
       -*)           error "Unknown option: $1"; return 1 ;;
       *)            SERVERS+=("$1"); shift ;;
     esac
