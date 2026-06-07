@@ -1,13 +1,13 @@
 # ntp-tools
 
 **Monitoring & analysis**
-- `check` — DNS, port, offset, RTT, stratum and full server details
-- `monitor` — live view of your local NTP daemon and sync status
-- `diff` — compare offset between two servers or against the local clock
+- `check` : DNS, port, offset, RTT, stratum and full server details
+- `monitor` : live view of your local NTP daemon and sync status
+- `diff` : compare offset between two servers or against the local clock
 
 **Cryptographic verification**
-- `NTS` — verifies TLS on port 4460, certificate validity and local daemon compatibility
-- `Roughtime` — UDP time query with Ed25519 signature verification, public key auto-fetched from DNS TXT
+- `NTS` : verifies TLS on port 4460, certificate validity and local daemon compatibility
+- `Roughtime` : UDP time query with Ed25519 signature verification, public key auto-fetched from DNS TXT
 
 ## Prerequisites
 
@@ -17,13 +17,26 @@ Optional: `openssl` (for NTS and Roughtime signature verification), `dig` (for R
 
 ## Install
 
-**User install**
+**Ubuntu / Debian (apt)**
+```bash
+sudo gpg --no-default-keyring \
+  --keyring /usr/share/keyrings/thehuman00-ntp-tools.gpg \
+  --keyserver keyserver.ubuntu.com \
+  --recv-keys 8CFDF6736F9013F1
+
+echo "deb [signed-by=/usr/share/keyrings/thehuman00-ntp-tools.gpg] https://ppa.launchpadcontent.net/thehuman00/ntp-tools/ubuntu noble main" \
+  | sudo tee /etc/apt/sources.list.d/thehuman00-ntp-tools.list
+
+sudo apt update && sudo apt install ntp-tools
+```
+
+**Manual user install**
 ```bash
 curl -fsSL https://github.com/TheHuman00/ntp-tools/releases/latest/download/ntp-tools -o ~/.local/bin/ntp-tools
 chmod +x ~/.local/bin/ntp-tools
 ```
 
-**System wide**
+**Manual system wide**
 ```bash
 sudo curl -fsSL https://github.com/TheHuman00/ntp-tools/releases/latest/download/ntp-tools -o /usr/local/bin/ntp-tools
 sudo chmod +x /usr/local/bin/ntp-tools
