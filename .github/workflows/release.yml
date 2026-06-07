@@ -40,7 +40,7 @@ jobs:
           DATE=$(date -R)
           PREV=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -n "$PREV" ]; then
-            CHANGES=$(git log "${PREV}..HEAD" --pretty=format:"  * %s" | grep -v "chore: release" | head -20)
+            CHANGES=$(git log "${PREV}..HEAD" --pretty=format:"  * %s" --no-merges | grep -v "chore: release" | head -20)
           fi
           [ -z "$CHANGES" ] && CHANGES="  * Release v${VERSION}"
           printf 'ntp-tools (%s-1) noble; urgency=medium\n\n%s\n\n -- TheHuman00 <thehuman00@inutile.pro>  %s\n\n' \
