@@ -27,10 +27,25 @@ jobs:
           fi
 
 
+      - name: Install build dependencies
+        run: sudo apt-get install -y debhelper dput-ng devscripts
+
       - name: Bump VERSION
         run: |
           sed -i 's/^VERSION=".*"/VERSION="${{ github.event.inputs.version }}"/' lib/ntp_common.sh
 
+      - name: Update debian/changelog
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          DATE=$(date -R)
+          PREV=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$PREV" ]; then
+            CHANGES=$(git log "${PREV}..HEAD" --pretty=format:"  * %s" | grep -v "chore: release" | head -20)
+          fi
+          [ -z "$CHANGES" ] && CHANGES="  * Release v${VERSION}"
+          printf 'ntp-tools (%s-1) noble; urgency=medium\n\n%s\n\n -- TheHuman00 <thehuman00@inutile.pro>  %s\n\n' \
+            "$VERSION" "$CHANGES" "$DATE" | cat - debian/changelog > /tmp/cl.tmp
+          mv /tmp/cl.tmp debian/changelog
       - name: Update CHANGELOG
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -63,11 +78,33 @@ jobs:
       - name: Build bundle
         run: bash build.sh
 
+      - name: Create upstream tarball
+        run: |
+          tar --exclude='.git' --exclude='debian' --exclude='dist' \
+            -czf ../ntp-tools_${{ github.event.inputs.version }}.orig.tar.gz .
+
+      - name: Import GPG subkey and build source package
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
+          printf 'allow-loopback-pinentry\ndefault-cache-ttl 86400\nmax-cache-ttl 86400\n' > ~/.gnupg/gpg-agent.conf
+          printf 'pinentry-mode loopback\nbatch\n' > ~/.gnupg/gpg.conf
+          echo "$GPG_PRIVATE_KEY" | base64 -d | gpg --batch --passphrase "$GPG_PASSPHRASE" --pinentry-mode loopback --import
+          echo "$GPG_KEY_ID:6:" | gpg --import-ownertrust
+          gpgconf --kill gpg-agent
+          gpgconf --launch gpg-agent
+          echo "test" | gpg --batch --passphrase "$GPG_PASSPHRASE" --pinentry-mode loopback \
+            --armor --sign --local-user "$GPG_KEY_ID" > /dev/null 2>&1
+          dpkg-buildpackage -S -sa -k"$GPG_KEY_ID"
+
       - name: Commit and tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add lib/ntp_common.sh CHANGELOG.md
+          git add lib/ntp_common.sh debian/changelog CHANGELOG.md
           git commit -m "chore: release v${{ github.event.inputs.version }}"
           git tag "v${{ github.event.inputs.version }}"
           git push origin HEAD --tags
@@ -79,3 +116,6 @@ jobs:
           name: "v${{ github.event.inputs.version }}"
           generate_release_notes: true
           files: dist/ntp-tools
+
+      - name: Upload to Launchpad PPA
+        run: dput ppa:thehuman00/ntp-tools ../ntp-tools_${{ github.event.inputs.version }}-1_source.changes

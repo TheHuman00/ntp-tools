@@ -1,0 +1,23 @@
+Source: ntp-tools
+Section: net
+Priority: optional
+Maintainer: TheHuman00 <thehuman00@inutile.pro>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/TheHuman00/ntp-tools
+Rules-Requires-Root: no
+
+Package: ntp-tools
+Architecture: all
+Depends: ${misc:Depends}, bash (>= 4.0), python3
+Recommends: openssl, dnsutils
+Description: Complete NTP CLI: health check, sync monitoring, NTS and Roughtime
+ ntp-tools provides a comprehensive set of NTP diagnostics from the
+ command line.
+ .
+  - check: DNS resolution, port 123/UDP, offset, RTT, stratum, full details
+  - monitor: live view of the local NTP daemon (chrony, ntpd, systemd-timesyncd)
+  - diff: compare time offset between two servers or against the local clock
+  - time: query current time from one or more NTP servers
+  - NTS: TLS audit on port 4460, certificate validity, daemon capability
+  - Roughtime: UDP query with Ed25519 signature verification, key via DNS TXT
