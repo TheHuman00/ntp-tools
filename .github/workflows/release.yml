@@ -98,7 +98,7 @@ jobs:
           gpgconf --launch gpg-agent
           echo "test" | gpg --batch --passphrase "$GPG_PASSPHRASE" --pinentry-mode loopback \
             --armor --sign --local-user "$GPG_KEY_ID" > /dev/null 2>&1
-          dpkg-buildpackage -S -sa -k"$GPG_KEY_ID"
+          dpkg-buildpackage -S -sa -d -k"$GPG_KEY_ID"
 
       - name: Commit and tag
         run: |
