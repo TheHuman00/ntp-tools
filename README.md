@@ -1,12 +1,13 @@
 # ntp-tools
 
-Complete NTP CLI : health check, sync monitoring, NTS audit & Roughtime verification.
+**Monitoring & analysis**
+- `check` — DNS, port, offset, RTT, stratum and full server details
+- `monitor` — live view of your local NTP daemon and sync status
+- `diff` — compare offset between two servers or against the local clock
 
-- **Check** : DNS, port, offset, RTT, stratum and full server details
-- **Monitor** : live view of your local NTP daemon and sync status
-- **Diff** : compare offset between two servers or against the local clock
-- **Nts** : verifies TLS on port 4460, certificate validity and local daemon compatibility
-- **Roughtime** : UDP time query with Ed25519 signature verification, public key auto-fetched from DNS TXT
+**Cryptographic verification**
+- `NTS` — verifies TLS on port 4460, certificate validity and local daemon compatibility
+- `Roughtime` — UDP time query with Ed25519 signature verification, public key auto-fetched from DNS TXT
 
 ## Prerequisites
 
