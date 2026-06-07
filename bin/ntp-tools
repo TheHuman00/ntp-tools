@@ -3,7 +3,7 @@
 # Locate lib: patched to an absolute path at install time,
 # falls back to relative path when running from the source tree.
 NTP_TOOLS_LIB="__LIBDIR__"
-if [[ "$NTP_TOOLS_LIB" == "__LIBDIR__" ]] || [[ ! -d "$NTP_TOOLS_LIB" ]]; then
+if [[ ! -d "$NTP_TOOLS_LIB" ]]; then
   NTP_TOOLS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
 fi
 
