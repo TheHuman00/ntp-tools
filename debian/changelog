@@ -1,3 +1,12 @@
+ntp-tools (1.1.1-1) noble; urgency=medium
+
+  * docs: simplify PPA install to add-apt-repository
+  * fix: exclude merge commits from debian/changelog
+  * docs: add PPA install instructions and Roughtime section
+  * fix: sed placeholder collision in bin/ntp-tools (fallback always triggered)
+
+ -- TheHuman00 <thehuman00@inutile.pro>  Sun, 07 Jun 2026 18:28:31 +0000
+
 ntp-tools (1.1.0-1) noble; urgency=medium
 
   * fix: ignore dist/ in dpkg-source diff

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.1 - 2026-06-07
+
+- docs: simplify PPA install to add-apt-repository
+- fix: exclude merge commits from debian/changelog
+- docs: add PPA install instructions and Roughtime section
+- fix: sed placeholder collision in bin/ntp-tools (fallback always triggered)
+
 ## v1.1.0 - 2026-06-07
 
 - fix: ignore dist/ in dpkg-source diff
