@@ -186,12 +186,18 @@ _check_server() {
       rt_chain=$( echo "$rt_result" | cut -d'|' -f6)
       rt_mint=$(  echo "$rt_result" | cut -d'|' -f7)
       rt_maxt=$(  echo "$rt_result" | cut -d'|' -f8)
-      echo -e "  Roughtime: $ok"
+      if [[ -z "$rt_pubkey" ]]; then
+        echo -e "  Roughtime: ${YELLOW}⚠${NC} (unverified)"
+      elif [[ "$rt_chain" == "FAIL" ]] || [[ "$rt_sig" == "FAIL" ]]; then
+        echo -e "  Roughtime: $fail"
+      else
+        echo -e "  Roughtime: $ok"
+      fi
       echo    "    Time:      $rt_ts"
       echo    "    Radius:    ±${rt_radi}s"
       echo    "    RTT:       $(format_unit "$rt_rtt")"
       if [[ -z "$rt_pubkey" ]]; then
-        echo    "    Auth:      no public key"
+        echo    "    Auth:      no public key - DNS TXT lookup failed"
         echo    "    Delegate:  —"
       else
         local chain_icon resp_icon
