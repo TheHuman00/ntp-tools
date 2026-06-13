@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # monitor.sh - Monitor NTP synchronization status
 # Sourced by ntp-tools dispatcher; do not execute directly.
 

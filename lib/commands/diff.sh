@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # diff.sh - Compare time between two NTP servers
 # Sourced by ntp-tools dispatcher; do not execute directly.
 
@@ -144,7 +145,6 @@ _diff_run() {
 
 main() {
   local SERVER1="" SERVER2="" SAMPLES=3
-  local TIMEOUT=5
 
   while [[ $# -gt 0 ]]; do
     case $1 in
