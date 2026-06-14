@@ -1,3 +1,9 @@
+ntp-tools (1.1.2-1) noble; urgency=medium
+
+  * fix: sign check or not when roughtime auth is unverified or fails
+
+ -- TheHuman00 <thehuman00@inutile.pro>  Thu, 11 Jun 2026 20:47:02 +0000
+
 ntp-tools (1.1.1-1) noble; urgency=medium
 
   * docs: simplify PPA install to add-apt-repository

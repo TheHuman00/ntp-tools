@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC2034
-VERSION="1.1.1"
+VERSION="1.1.2"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

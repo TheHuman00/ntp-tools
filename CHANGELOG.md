@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2 - 2026-06-11
+
+- fix: sign check or not when roughtime auth is unverified or fails
+
 ## v1.1.1 - 2026-06-07
 
 - docs: simplify PPA install to add-apt-repository
