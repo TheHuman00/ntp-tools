@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # check.sh - Check NTP server health and availability
 # Sourced by ntp-tools dispatcher; do not execute directly.
 
@@ -38,7 +39,7 @@ _check_ntp_data() {
 _check_nts() {
   local server="$1" port="${2:-4460}"
 
-  if timeout 5 bash -c "echo >/dev/tcp/$server/$port" 2>/dev/null; then
+  if (echo >/dev/tcp/"$server"/"$port") 2>/dev/null; then
     echo "NTS:KE_PORT_OK"
   else
     echo "NTS:KE_PORT_FAIL"
@@ -176,8 +177,7 @@ _check_server() {
     else
       rt_pubkey=$(_roughtime_dns_key "$server")
     fi
-    rt_result=$(_roughtime_query "$server" "$ROUGHTIME_PORT" "$rt_pubkey")
-    if [[ $? -eq 0 ]] && [[ -n "$rt_result" ]]; then
+    if rt_result=$(_roughtime_query "$server" "$ROUGHTIME_PORT" "$rt_pubkey") && [[ -n "$rt_result" ]]; then
       rt_midp=$(  echo "$rt_result" | cut -d'|' -f1)
       rt_radi=$(  echo "$rt_result" | cut -d'|' -f2)
       rt_rtt=$(   echo "$rt_result" | cut -d'|' -f3)
@@ -263,7 +263,6 @@ _check_server() {
 
 main() {
   local SERVERS=() CHECK_NTS=false CHECK_ROUGHTIME=false
-  local TIMEOUT=10
   ROUGHTIME_PORT=2002
   ROUGHTIME_KEY=""
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # time.sh - Get current time from NTP servers
 # Sourced by ntp-tools dispatcher; do not execute directly.
 
@@ -33,7 +34,6 @@ _format_timestamp() {
 
 main() {
   local SERVERS=() OUTPUT_FORMAT="human"
-  local TIMEOUT=5
 
   while [[ $# -gt 0 ]]; do
     case $1 in

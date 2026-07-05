@@ -7,6 +7,7 @@ if [[ ! -d "$NTP_TOOLS_LIB" ]]; then
   NTP_TOOLS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
 fi
 
+# shellcheck source=lib/ntp_common.sh
 source "$NTP_TOOLS_LIB/ntp_common.sh" 2>/dev/null || {
   echo "Error: cannot load ntp_common.sh (looked in: $NTP_TOOLS_LIB)" >&2
   exit 1
@@ -37,6 +38,7 @@ shift
 
 case "$cmd" in
   time|check|monitor|diff)
+    # shellcheck disable=SC1090
     source "$NTP_TOOLS_LIB/commands/$cmd.sh" || exit 1
     main "$@"
     ;;
